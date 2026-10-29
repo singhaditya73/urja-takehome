@@ -24,7 +24,7 @@ this service.
 ```bash
 git clone <this repo> && cd urja-ops-api
 npm install
-cp .env.example .env          # fill PORTAL_PASSWORD (or keep the given one)
+cp .env.example .env          # fill your portal credentials (PORTAL_EMAIL / PORTAL_PASSWORD)
 npm start                     # http://127.0.0.1:8000
 ```
 
