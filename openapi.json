@@ -1,0 +1,930 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Urja Ops API",
+    "description": "Clean programmatic access over the legacy Urja Meter Ops portal: meter records, network hierarchy and consumption.",
+    "version": "0.1.0"
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {}
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "index_age_ms",
+                    "stale_index",
+                    "uptime_s"
+                  ],
+                  "properties": {
+                    "status": {
+                      "enum": [
+                        "ok",
+                        "degraded"
+                      ],
+                      "type": "string"
+                    },
+                    "index_age_ms": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "stale_index": {
+                      "type": "boolean"
+                    },
+                    "uptime_s": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/meters": {
+      "get": {
+        "summary": "List meters",
+        "tags": [
+          "meters"
+        ],
+        "description": "Filterable list backed by a local index refreshed from the portal bulk export.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Substring match on meter id or serial number"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Installed | Faulty | Decommissioned"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "phase",
+            "required": false,
+            "description": "single | three"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "make",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "build",
+            "required": false,
+            "description": "legacy | v2"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "install_type",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "dt",
+            "required": false,
+            "description": "DT code, e.g. DT-002"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "feeder",
+            "required": false,
+            "description": "Feeder code, e.g. F-002"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "zone",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "circle",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "subdivision",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "division",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "substation",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "pagination"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "meter_id",
+                          "serial_no",
+                          "make",
+                          "phase_type",
+                          "install_status",
+                          "install_type",
+                          "build",
+                          "dt_code"
+                        ],
+                        "properties": {
+                          "meter_id": {
+                            "type": "string"
+                          },
+                          "serial_no": {
+                            "type": "string"
+                          },
+                          "make": {
+                            "type": "string"
+                          },
+                          "phase_type": {
+                            "type": "string"
+                          },
+                          "install_status": {
+                            "type": "string"
+                          },
+                          "install_type": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "build": {
+                            "description": "legacy | v2 — internal build marker the portal UI never shows",
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "dt_code": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "required": [
+                        "total",
+                        "limit",
+                        "offset"
+                      ],
+                      "properties": {
+                        "total": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "offset": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/meters/nearby": {
+      "get": {
+        "summary": "Meters near a point",
+        "tags": [
+          "meters"
+        ],
+        "description": "Straight-line (haversine) distance search over coordinates from the portal export.",
+        "parameters": [
+          {
+            "schema": {
+              "minimum": -90,
+              "maximum": 90,
+              "type": "number"
+            },
+            "in": "query",
+            "name": "latitude",
+            "required": true
+          },
+          {
+            "schema": {
+              "minimum": -180,
+              "maximum": 180,
+              "type": "number"
+            },
+            "in": "query",
+            "name": "longitude",
+            "required": true
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 50000,
+              "default": 500,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "radius_m",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "pagination",
+                    "query"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "meter_id",
+                          "serial_no",
+                          "make",
+                          "phase_type",
+                          "install_status",
+                          "install_type",
+                          "build",
+                          "dt_code",
+                          "distance_m"
+                        ],
+                        "properties": {
+                          "meter_id": {
+                            "type": "string"
+                          },
+                          "serial_no": {
+                            "type": "string"
+                          },
+                          "make": {
+                            "type": "string"
+                          },
+                          "phase_type": {
+                            "type": "string"
+                          },
+                          "install_status": {
+                            "type": "string"
+                          },
+                          "install_type": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "build": {
+                            "description": "legacy | v2 — internal build marker the portal UI never shows",
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "dt_code": {
+                            "type": "string"
+                          },
+                          "distance_m": {
+                            "type": "number"
+                          }
+                        }
+                      }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "required": [
+                        "total",
+                        "limit",
+                        "offset"
+                      ],
+                      "properties": {
+                        "total": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "offset": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "query": {
+                      "type": "object",
+                      "required": [
+                        "latitude",
+                        "longitude",
+                        "radius_m"
+                      ],
+                      "properties": {
+                        "latitude": {
+                          "type": "number"
+                        },
+                        "longitude": {
+                          "type": "number"
+                        },
+                        "radius_m": {
+                          "type": "number"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/meters/{meterId}": {
+      "get": {
+        "summary": "Meter detail",
+        "tags": [
+          "meters"
+        ],
+        "description": "Includes resolved position in the network hierarchy and coordinates.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "meterId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "meter_id",
+                    "serial_no",
+                    "make",
+                    "phase_type",
+                    "install_status",
+                    "install_type",
+                    "build",
+                    "dt_code",
+                    "geo",
+                    "hierarchy"
+                  ],
+                  "properties": {
+                    "meter_id": {
+                      "type": "string"
+                    },
+                    "serial_no": {
+                      "type": "string"
+                    },
+                    "make": {
+                      "type": "string"
+                    },
+                    "phase_type": {
+                      "type": "string"
+                    },
+                    "install_status": {
+                      "type": "string"
+                    },
+                    "install_type": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "build": {
+                      "description": "legacy | v2 — internal build marker the portal UI never shows",
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "dt_code": {
+                      "type": "string"
+                    },
+                    "geo": {
+                      "type": "object",
+                      "required": [
+                        "latitude",
+                        "longitude"
+                      ],
+                      "properties": {
+                        "latitude": {
+                          "type": "number"
+                        },
+                        "longitude": {
+                          "type": "number"
+                        }
+                      },
+                      "nullable": true
+                    },
+                    "hierarchy": {
+                      "description": "Meter’s network path, outermost first. Names resolved by majority vote.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "level",
+                          "code",
+                          "name"
+                        ],
+                        "properties": {
+                          "level": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/meters/{meterId}/energy": {
+      "get": {
+        "summary": "Meter energy series",
+        "tags": [
+          "meters"
+        ],
+        "description": "Readings from the portal with per-interval consumption computed from register deltas. Timestamps are ISO 8601 with +05:30. The portal currently stores data for June 2026.",
+        "parameters": [
+          {
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "description": "YYYY-MM-DD (IST)"
+          },
+          {
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "description": "YYYY-MM-DD (IST)"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "meterId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "meter_id",
+                    "from",
+                    "to",
+                    "interval_minutes",
+                    "points",
+                    "data_quality",
+                    "cache"
+                  ],
+                  "properties": {
+                    "meter_id": {
+                      "type": "string"
+                    },
+                    "from": {
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                      "description": "YYYY-MM-DD (IST)",
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "to": {
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                      "description": "YYYY-MM-DD (IST)",
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "interval_minutes": {
+                      "description": "Modal read interval; null with too few points. Irregular cadence shows in data_quality.",
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "points": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "timestamp",
+                          "kWh",
+                          "kVAh",
+                          "voltR",
+                          "consumption_kWh"
+                        ],
+                        "properties": {
+                          "timestamp": {
+                            "description": "ISO 8601 timestamp with IST offset",
+                            "type": "string"
+                          },
+                          "kWh": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "kVAh": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "voltR": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "consumption_kWh": {
+                            "type": "number",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    },
+                    "data_quality": {
+                      "type": "object",
+                      "required": [
+                        "malformed_rows",
+                        "duplicate_timestamps",
+                        "regressed_readings",
+                        "irregular_gaps"
+                      ],
+                      "properties": {
+                        "malformed_rows": {
+                          "type": "integer"
+                        },
+                        "duplicate_timestamps": {
+                          "type": "integer"
+                        },
+                        "regressed_readings": {
+                          "type": "integer"
+                        },
+                        "irregular_gaps": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "cache": {
+                      "type": "object",
+                      "required": [
+                        "served_from"
+                      ],
+                      "properties": {
+                        "served_from": {
+                          "enum": [
+                            "portal",
+                            "cache",
+                            "cache-stale"
+                          ],
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/network/tree": {
+      "get": {
+        "summary": "Network hierarchy tree",
+        "tags": [
+          "network"
+        ],
+        "description": "Canonical zone→DT tree reconstructed from all meter chains. Where meters disagree, majority wins and the disagreement is recorded on the node.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "level",
+                          "code",
+                          "name",
+                          "name_variants",
+                          "parent_code",
+                          "parent_conflict",
+                          "meter_count",
+                          "children"
+                        ],
+                        "properties": {
+                          "level": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "name_variants": {
+                            "description": "Other names the portal attaches to this code (data conflict).",
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "parent_code": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "parent_conflict": {
+                            "type": "boolean"
+                          },
+                          "meter_count": {
+                            "type": "integer"
+                          },
+                          "children": {
+                            "description": "Nested levels of the network tree.",
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/def-0"
+                            }
+                          }
+                        },
+                        "title": "T0"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "required": [
+                        "conflicts"
+                      ],
+                      "properties": {
+                        "conflicts": {
+                          "description": "Nodes with conflicting names or parents across meters.",
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/network/transformers": {
+      "get": {
+        "summary": "Distribution transformers",
+        "tags": [
+          "network"
+        ],
+        "description": "The portal’s DT master list, enriched with meter counts from our index.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "total"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "code",
+                          "name",
+                          "feeder_code",
+                          "capacity_kva",
+                          "meter_count"
+                        ],
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "feeder_code": {
+                            "type": "string"
+                          },
+                          "capacity_kva": {
+                            "type": "number"
+                          },
+                          "meter_count": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "meters",
+      "description": "Meter records and time series"
+    },
+    {
+      "name": "network",
+      "description": "Distribution network hierarchy"
+    }
+  ]
+}
