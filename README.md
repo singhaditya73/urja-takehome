@@ -158,7 +158,7 @@ test/                 vitest: sign, energy normalization, portal client, ingest,
 ## Testing
 
 ```bash
-npm test         # 31 tests, all offline (portal mocked with undici MockAgent)
+npm test         # 32 tests, all offline (portal mocked with undici MockAgent)
 ```
 
 The test suite covers: the HMAC publishing scheme's canonical form, login flow /

@@ -21,6 +21,10 @@ export async function buildApp({ config, services }: BuildOptions): Promise<Fast
   const fullServices: Services = { config, ...services };
 
   app.setErrorHandler((err: FastifyError, req, reply) => {
+    if (err.code === 'FST_ERR_VALIDATION' || err.name === 'ValidationError') {
+      void reply.status(400).send({ error: 'bad_request', message: err.message });
+      return;
+    }
     const portalErr = err as unknown as PortalError;
     const status = typeof portalErr.status === 'number' ? portalErr.status : 500;
     const code = typeof portalErr.code === 'string' ? portalErr.code : 'internal_error';

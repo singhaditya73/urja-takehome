@@ -790,6 +790,7 @@
                           "name_variants",
                           "parent_code",
                           "parent_conflict",
+                          "unresolved_parents",
                           "meter_count",
                           "children"
                         ],
@@ -816,6 +817,10 @@
                           },
                           "parent_conflict": {
                             "type": "boolean"
+                          },
+                          "unresolved_parents": {
+                            "description": "Meters whose chain does not resolve this node’s parent.",
+                            "type": "integer"
                           },
                           "meter_count": {
                             "type": "integer"

@@ -107,6 +107,13 @@ async function get(a: AppHandles, path: string, withAuth = true) {
 }
 
 describe('API e2e (portal fully mocked)', () => {
+  it('envelopes validation errors consistently', async () => {
+    const a = await buildTestApp();
+    const r = await get(a, '/v1/meters?limit=9999');
+    expect(r.status).toBe(400);
+    expect(r.body).toEqual({ error: 'bad_request', message: expect.any(String) });
+  });
+
   it('rejects unauthenticated /v1 calls but leaves /health open', async () => {
     const a = await buildTestApp();
     expect((await get(a, '/v1/meters', false)).status).toBe(401);
