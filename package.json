@@ -15,6 +15,7 @@
     "openapi": "tsx scripts/generate-openapi.ts"
   },
   "dependencies": {
+    "@fastify/static": "^10.1.8",
     "@fastify/swagger": "^9.0.0",
     "@fastify/swagger-ui": "^6.0.0",
     "@fastify/type-provider-typebox": "^6.3.0",

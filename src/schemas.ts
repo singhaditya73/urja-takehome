@@ -14,7 +14,9 @@ export const MeterSummary = Type.Object({
   build: Type.Union([Type.String(), Type.Null()], {
     description: 'legacy | v2 — internal build marker the portal UI never shows'
   }),
-  dt_code: Type.String()
+  dt_code: Type.String(),
+  latitude: Type.Optional(Type.Union([Type.Number(), Type.Null()])),
+  longitude: Type.Optional(Type.Union([Type.Number(), Type.Null()]))
 });
 
 export const Geo = Type.Object({

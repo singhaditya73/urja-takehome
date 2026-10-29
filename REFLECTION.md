@@ -44,9 +44,10 @@ has an explicit, tested contract.
 
 ## If you had another day, what would you improve?
 
-1. **A web client.** With the coordinates we already index, a small map plus
-   consumption-over-time charts and per-DT load summaries would be a much nicer
-   front door than the original table — an afternoon of work with Leaflet/ECharts.
+1. **A web client (done, delivered at `/app/`).** With the coordinates indexed
+   from the export, the map + consumption-over-time charts + per-DT load view
+   became a single-file page served by the API itself, verified in headless
+   Chrome against the live service.
 2. **Rolling consumption aggregates in SQLite** (last 7/30-day kWh, current
    average load) so product questions — "which DT is running hot?" — become one
    query. The data is already there; only the summarization query layer is missing.
@@ -77,9 +78,10 @@ That's what pushed us to build pacing into the client rather than around it.
 
 ## If you were reviewing your own submission, what would you criticise?
 
-1. **The web client is missing**, and reviewers notice when a "product" deliverable
-   has no product. It's marked as future work, but with one more day it simply
-   wouldn't be.
+1. **The web client is thin by design** (single file, CDN libraries, no build
+   step). It's delivered at `/app/` and works, but it has no automated tests —
+   a reviewer will click it, not unit-test it. Production would want a real
+   frontend build (Vite/Svelte) with component tests.
 2. **Pagination on `/v1/meters/{id}/energy` is portal-bounded**: portals slice data
    by date, and we mirror that. For meters with local backfill we could serve
    arbitrary windows with real pagination; today a full-series request on a

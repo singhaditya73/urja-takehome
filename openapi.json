@@ -249,6 +249,14 @@
                           },
                           "dt_code": {
                             "type": "string"
+                          },
+                          "latitude": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "longitude": {
+                            "type": "number",
+                            "nullable": true
                           }
                         }
                       }
@@ -397,6 +405,14 @@
                           "dt_code": {
                             "type": "string"
                           },
+                          "latitude": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "longitude": {
+                            "type": "number",
+                            "nullable": true
+                          },
                           "distance_m": {
                             "type": "number"
                           }
@@ -512,6 +528,14 @@
                     },
                     "dt_code": {
                       "type": "string"
+                    },
+                    "latitude": {
+                      "type": "number",
+                      "nullable": true
+                    },
+                    "longitude": {
+                      "type": "number",
+                      "nullable": true
                     },
                     "geo": {
                       "type": "object",

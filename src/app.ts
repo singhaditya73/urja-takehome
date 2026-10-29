@@ -1,6 +1,8 @@
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
+import fastifyStatic from '@fastify/static';
+import { fileURLToPath } from 'node:url';
 import { type AppConfig } from './config.js';
 import type { PortalClient, PortalError } from './portal/client.js';
 import type { Services } from './types.js';
@@ -67,6 +69,12 @@ export async function buildApp({ config, services }: BuildOptions): Promise<Fast
   });
   await app.register(swaggerUi, { routePrefix: '/docs' });
   app.get('/openapi.json', { schema: { hide: true } }, async () => app.swagger());
+
+  // Small web client on top of the API (same origin → no CORS needed).
+  await app.register(fastifyStatic, {
+    root: fileURLToPath(new URL('../web', import.meta.url)),
+    prefix: '/app/'
+  });
 
   app.get('/', { schema: { hide: true } }, async () => ({
     service: 'urja-ops-api',

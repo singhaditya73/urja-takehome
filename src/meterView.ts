@@ -15,6 +15,8 @@ export function toMeterSummary(row: {
   install_type: string | null;
   build: string | null;
   dt_code: string;
+  lat: number | null;
+  lng: number | null;
 }) {
   return {
     meter_id: row.meter_id,
@@ -24,7 +26,9 @@ export function toMeterSummary(row: {
     install_status: row.install_status,
     install_type: row.install_type,
     build: row.build,
-    dt_code: row.dt_code
+    dt_code: row.dt_code,
+    latitude: row.lat,
+    longitude: row.lng
   };
 }
 

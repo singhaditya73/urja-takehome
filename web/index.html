@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Urja Grid Explorer</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a; --panel: #1e293b; --panel2: #263449; --line: #334155;
+    --text: #e2e8f0; --dim: #94a3b8; --accent: #38bdf8; --green: #4ade80;
+    --amber: #fbbf24; --gray: #64748b;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 15px; font-weight: 600; }
+  header .stats { display: flex; gap: 14px; font-size: 12px; color: var(--dim); }
+  header .stats b { color: var(--text); }
+  header .spacer { flex: 1; }
+  header input { background: var(--panel2); border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 5px 8px; font-size: 12px; width: 260px; }
+  main { display: flex; flex: 1; min-height: 0; }
+  aside { width: 320px; background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  .filters { padding: 10px 12px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px; }
+  .filters select { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; font-size: 12px; }
+  .filters .count { font-size: 11px; color: var(--dim); width: 100%; }
+  #list { flex: 1; overflow-y: auto; }
+  .row { padding: 8px 12px; border-bottom: 1px solid var(--line); cursor: pointer; font-size: 12px; }
+  .row:hover { background: var(--panel2); }
+  .row.active { background: var(--panel2); border-left: 3px solid var(--accent); }
+  .row .id { font-weight: 600; color: var(--accent); }
+  .row .meta { color: var(--dim); margin-top: 2px; }
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 10px; font-weight: 600; }
+  .pill.Installed { background: rgba(74,222,128,.15); color: var(--green); }
+  .pill.Faulty { background: rgba(251,191,36,.15); color: var(--amber); }
+  .pill.Decommissioned { background: rgba(100,116,139,.2); color: var(--gray); }
+  section#stage { flex: 1; position: relative; }
+  #map { position: absolute; inset: 0; }
+  .legend { position: absolute; z-index: 500; bottom: 14px; left: 14px; background: rgba(15,23,42,.85); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font-size: 11px; display: flex; gap: 12px; }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; }
+  #panel { position: absolute; z-index: 600; top: 0; right: 0; width: 430px; height: 100%; background: var(--panel); border-left: 1px solid var(--line); transform: translateX(105%); transition: transform .25s ease; display: flex; flex-direction: column; box-shadow: -8px 0 24px rgba(0,0,0,.35); }
+  #panel.open { transform: none; }
+  #panel .head { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
+  #panel .head h2 { font-size: 15px; }
+  #panel .head .close { margin-left: auto; background: none; border: none; color: var(--dim); font-size: 18px; cursor: pointer; }
+  #panel .tabs { display: flex; gap: 4px; padding: 8px 12px 0; }
+  #panel .tabs button { flex: 1; background: var(--panel2); color: var(--dim); border: 1px solid var(--line); border-bottom: none; border-radius: 8px 8px 0 0; padding: 7px 0; font-size: 12px; cursor: pointer; }
+  #panel .tabs button.active { color: var(--text); background: var(--bg); }
+  #panel .body { flex: 1; overflow-y: auto; padding: 14px 16px; background: var(--bg); }
+  dl.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; font-size: 12px; margin-bottom: 14px; }
+  dl.kv dt { color: var(--dim); }
+  dl.kv dd { text-align: right; }
+  .crumbs { font-size: 11px; color: var(--dim); line-height: 2; margin-bottom: 12px; }
+  .crumbs b { color: var(--text); }
+  .chart-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 12px; }
+  .chart-wrap h3 { font-size: 12px; color: var(--dim); font-weight: 500; margin-bottom: 6px; }
+  .warn { font-size: 11px; color: var(--amber); margin-bottom: 10px; }
+  .btn { background: var(--accent); color: #0f172a; border: none; border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .dialog-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  .dialog { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 22px; width: 340px; }
+  .dialog h2 { font-size: 15px; margin-bottom: 6px; }
+  .dialog p { font-size: 12px; color: var(--dim); margin-bottom: 12px; }
+  .dialog input { width: 100%; padding: 8px; background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; margin-bottom: 12px; }
+  .err { color: var(--amber); font-size: 11px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Urja Grid Explorer</h1>
+  <div class="stats" id="stats"></div>
+  <div class="spacer"></div>
+  <input id="search" placeholder="Search meter id or serial…" />
+</header>
+<main>
+  <aside>
+    <div class="filters">
+      <select id="fStatus"><option value="">Any status</option></select>
+      <select id="fPhase"><option value="">Any phase</option></select>
+      <select id="fBuild"><option value="">Any build</option></select>
+      <select id="fDt"><option value="">Any DT</option></select>
+      <div class="count" id="count"></div>
+    </div>
+    <div id="list"></div>
+  </aside>
+  <section id="stage">
+    <div id="map"></div>
+    <div class="legend">
+      <span><i style="background:var(--green)"></i>Installed</span>
+      <span><i style="background:var(--amber)"></i>Faulty</span>
+      <span><i style="background:var(--gray)"></i>Decommissioned</span>
+      <span><i style="background:transparent;border:1px dashed var(--accent)"></i>selected (ring)</span>
+    </div>
+    <div id="panel">
+      <div class="head">
+        <h2 id="pTitle"></h2><span class="close" id="pClose">✕</span>
+      </div>
+      <div class="tabs">
+        <button data-tab="nameplate" class="active">Meter</button>
+        <button data-tab="consumption">Consumption</button>
+        <button data-tab="quality">Network</button>
+      </div>
+      <div class="body" id="pBody"></div>
+    </div>
+  </section>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+<pre id="bootlog" style="display:none"></pre>
+<script>
+window.addEventListener('error', (e) => {
+  const el = document.getElementById('bootlog');
+  if (el) el.textContent += 'BOOT ERROR: ' + e.message + ' @' + (e.filename || '') + ':' + e.lineno + '\n';
+});
+document.getElementById('bootlog').textContent += 'js: entry\n';
+const API = location.origin.replace(/\/app$/, '');
+const STATUS_COLOR = { Installed: '#4ade80', Faulty: '#fbbf24', Decommissioned: '#64748b' };
+// The portal's stored dataset is June 2026 (see PROTOCOL.md §3).
+const DATA_FROM = '2026-06-01', DATA_TO = '2026-06-30';
+
+let token = localStorage.getItem('urja_token') || '';
+// Allow passing the token via URL (?token=...) — handy for headless checks and demos.
+const qToken = new URLSearchParams(location.search).get('token');
+if (qToken) {
+  token = qToken;
+  localStorage.setItem('urja_token', token);
+}
+let meters = [];
+let selected = null;
+let markers = {};
+let statusChart = null, intervalChart = null, dtChart = null;
+
+/* ------------------------------------------------ auth */
+async function ensureToken() {
+  // /health is unauthenticated; validate the token against a real endpoint so
+  // an empty/stale token never leaves us waiting on a hidden dialog.
+  const r = await fetch(API + '/v1/meters?limit=1', { headers: { Authorization: 'Bearer ' + token } });
+  if (r.ok) return;
+  await tokenPrompt();
+  const retry = await fetch(API + '/v1/meters?limit=1', { headers: { Authorization: 'Bearer ' + token } });
+  if (!retry.ok) throw new Error('token still rejected (' + retry.status + ')');
+}
+function tokenPrompt() {
+  document.getElementById('bootlog').textContent += 'js: auth prompt\n';
+  return new Promise((resolve) => {
+    const bd = document.createElement('div');
+    bd.className = 'dialog-backdrop';
+    bd.innerHTML = `
+      <div class="dialog">
+        <h2>API token required</h2>
+        <p>Paste the bearer token configured for this service (API_TOKEN in the .env, default dev-token-change-me).</p>
+        <input value="${token}" placeholder="API token" id="tokInput" />
+        <button class="btn">Continue</button>
+      </div>`;
+    document.body.appendChild(bd);
+    const input = bd.querySelector('#tokInput');
+    bd.querySelector('button').onclick = () => {
+      token = input.value.trim();
+      localStorage.setItem('urja_token', token);
+      bd.remove();
+      resolve(token);
+    };
+    input.focus();
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') bd.querySelector('button').click(); });
+  });
+}
+async function api(path) {
+  const res = await fetch(API + '/v1' + path, { headers: { Authorization: 'Bearer ' + token } });
+  if (res.status === 401) {
+    await tokenPrompt();
+    return api(path);
+  }
+  if (!res.ok) throw new Error((await res.json()).message || res.status);
+  return res.json();
+}
+
+/* ------------------------------------------------ map */
+const map = L.map('map', { preferCanvas: true }).setView([26.9, 75.79], 11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors', maxZoom: 18
+}).addTo(map);
+
+function drawMarkers(filtered) {
+  for (const id in markers) { map.removeLayer(markers[id]); delete markers[id]; }
+  for (const m of filtered) {
+    if (m.latitude == null || m.longitude == null) continue;
+    const mk = L.circleMarker([m.latitude, m.longitude], {
+      radius: 6, weight: 1, color: '#0f172a',
+      fillColor: STATUS_COLOR[m.install_status] || '#94a3b8', fillOpacity: 0.9
+    }).bindTooltip(`${m.meter_id} · ${m.install_status}`);
+    mk.on('click', () => select(m.meter_id));
+    markers[m.meter_id] = mk.addTo(map);
+  }
+}
+
+/* ------------------------------------------------ list & filters */
+function fillFilters() {
+  const opts = (key, mapFn) => [...new Set(meters.map(mapFn))].sort().map(v => `<option>${v}</option>`).join('');
+  document.getElementById('fStatus').innerHTML += opts('s', m => m.install_status);
+  document.getElementById('fPhase').innerHTML += opts('p', m => m.phase_type);
+  document.getElementById('fBuild').innerHTML += opts('b', m => m.build || '— none —');
+  document.getElementById('fDt').innerHTML += opts('d', m => m.dt_code);
+}
+function filtered() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const f = {
+    status: document.getElementById('fStatus').value,
+    phase: document.getElementById('fPhase').value,
+    build: document.getElementById('fBuild').value,
+    dt: document.getElementById('fDt').value
+  };
+  return meters.filter(m =>
+    (!q || m.meter_id.toLowerCase().includes(q) || m.serial_no.toLowerCase().includes(q)) &&
+    (!f.status || m.install_status === f.status) &&
+    (!f.phase || m.phase_type === f.phase) &&
+    (!f.build || (m.build || '— none —') === f.build) &&
+    (!f.dt || m.dt_code === f.dt)
+  );
+}
+function renderList() {
+  const list = filtered();
+  document.getElementById('count').textContent = `${list.length} of ${meters.length} meters`;
+  document.getElementById('list').innerHTML = list.map(m => `
+    <div class="row ${m.meter_id === selected ? 'active' : ''}" data-id="${m.meter_id}">
+      <span class="id">${m.meter_id}</span> <span class="pill ${m.install_status}">${m.install_status}</span>
+      <div class="meta">${m.serial_no} · ${m.make} · ${m.phase_type} · ${m.dt_code}</div>
+    </div>`).join('');
+  document.getElementById('stats').innerHTML =
+    `<span><b>${meters.length}</b> meters</span>` +
+    `<span><b>${meters.filter(m => m.install_status === 'Faulty').length}</b> faulty</span>` +
+    `<span><b>${meters.filter(m => m.install_status === 'Installed').length}</b> installed</span>`;
+  drawMarkers(list);
+}
+document.getElementById('search').addEventListener('input', renderList);
+document.getElementById('fStatus').addEventListener('change', renderList);
+document.getElementById('fPhase').addEventListener('change', renderList);
+document.getElementById('fBuild').addEventListener('change', renderList);
+document.getElementById('fDt').addEventListener('change', renderList);
+document.getElementById('list').addEventListener('click', (e) => {
+  const row = e.target.closest('.row');
+  if (row) select(row.dataset.id);
+});
+
+/* ------------------------------------------------ detail panel */
+document.getElementById('pClose').onclick = () => document.getElementById('panel').classList.remove('open');
+document.querySelector('#panel .tabs').addEventListener('click', (e) => {
+  if (!e.target.dataset.tab) return;
+  document.querySelectorAll('#panel .tabs button').forEach(b => b.classList.toggle('active', b === e.target));
+  renderTab(e.target.dataset.tab);
+});
+let currentTab = 'nameplate', currentDetail = null, currentEnergy = null;
+
+async function select(id) {
+  selected = id;
+  renderList();
+  // fly to marker
+  const m = meters.find(x => x.meter_id === id);
+  if (m?.latitude != null) map.flyTo([m.latitude, m.longitude], 15, { duration: .6 });
+
+  document.getElementById('panel').classList.add('open');
+  currentTab = 'nameplate';
+  document.querySelectorAll('#panel .tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === 'nameplate'));
+  document.getElementById('pTitle').textContent = id;
+  document.getElementById('pBody').innerHTML = '<p style="color:var(--dim);font-size:12px">Loading…</p>';
+  try {
+    currentDetail = await api('/meters/' + id);
+    currentEnergy = null;
+    renderTab('nameplate');
+  } catch (err) {
+    document.getElementById('pBody').innerHTML = '<p class="err">' + err.message + '</p>';
+  }
+}
+
+function renderTab(tab) {
+  currentTab = tab;
+  const body = document.getElementById('pBody');
+  if (tab === 'nameplate') return renderNameplate(body);
+  if (tab === 'consumption') return void (currentEnergy ? renderCharts(body) : loadEnergyAndRender(body));
+  if (tab === 'quality') return renderNetwork(body);
+}
+
+function renderNameplate(body) {
+  const d = currentDetail;
+  body.innerHTML = `
+    ${d.build === 'legacy' ? '<div class="warn">legacy build — this meter\u2019s chain disagrees with the DT master list in our index</div>' : ''}
+    <dl class="kv">
+      <dt>Meter ID</dt><dd>${d.meter_id}</dd>
+      <dt>Serial</dt><dd>${d.serial_no}</dd>
+      <dt>Make</dt><dd>${d.make}</dd>
+      <dt>Phase</dt><dd>${d.phase_type}</dd>
+      <dt>Status</dt><dd><span class="pill ${d.install_status}">${d.install_status}</span></dd>
+      <dt>Install type</dt><dd>${d.install_type ?? '—'}</dd>
+      <dt>Build</dt><dd>${d.build ?? '—'}</dd>
+    </dl>
+    <div class="crumbs">${d.hierarchy.map(h => `${h.level} <b>${h.name}</b> (${h.code})`).join(' <span style="color:var(--gray)">›</span> ')}</div>
+    <button class="btn" id="nearbyBtn">Meters within 500 m</button>
+    <div id="nearbyOut" style="margin-top:10px;font-size:12px;color:var(--dim)"></div>`;
+  body.querySelector('#nearbyBtn').onclick = async () => {
+    const out = body.querySelector('#nearbyOut');
+    out.textContent = 'Searching…';
+    try {
+      const r = await api(`/meters/nearby?latitude=${d.geo.latitude}&longitude=${d.geo.longitude}&radius_m=500`);
+      out.innerHTML = r.data.length
+        ? r.data.map(n => `${n.meter_id} <span class="pill ${n.install_status}">${n.install_status}</span> @ ${n.distance_m} m`).join('<br>')
+        : 'No others within 500 m.';
+    } catch (e) { out.innerHTML = '<span class="err">' + e.message + '</span>'; }
+  };
+}
+
+async function loadEnergyAndRender(body) {
+  body.innerHTML = '<p style="color:var(--dim);font-size:12px">Loading June series…</p>';
+  try {
+    currentEnergy = await api(`/meters/${currentDetail.meter_id}/energy?from=${DATA_FROM}&to=${DATA_TO}`);
+    renderCharts(body);
+  } catch (e) { body.innerHTML = '<p class="err">' + e.message + '</p>'; }
+}
+
+function renderCharts(body) {
+  const e = currentEnergy;
+  const dq = e.data_quality;
+  const warnBits = [];
+  if (dq.malformed_rows) warnBits.push(`${dq.malformed_rows} malformed row(s) hidden`);
+  if (dq.duplicate_timestamps) warnBits.push(`${dq.duplicate_timestamps} duplicate(s) dropped`);
+  if (dq.regressed_readings) warnBits.push(`${dq.regressed_readings} regressed reading(s)`);
+  if (dq.irregular_gaps) warnBits.push(`${dq.irregular_gaps} irregular gap(s)`);
+  body.innerHTML = `
+    ${warnBits.length ? `<div class="warn">Data quality: ${warnBits.join(' · ')}</div>` : ''}
+    <div class="chart-wrap"><h3>Daily consumption (kWh) — June 2026</h3><canvas id="dailyChart" height="150"></canvas></div>
+    <div class="chart-wrap"><h3>Half-hourly consumption & phase voltage (V)</h3><canvas id="intervalChart" height="150"></canvas></div>
+    <p style="font-size:10px;color:var(--gray)">interval: ${e.interval_minutes == null ? 'irregular' : e.interval_minutes + ' min'} · cache: ${e.cache.served_from}</p>`;
+
+  // Daily totals from per-interval consumption
+  const daily = {};
+  for (const p of e.points) {
+    if (p.consumption_kWh == null) continue;
+    const day = p.timestamp.slice(0, 10);
+    daily[day] = Math.round(((daily[day] || 0) + p.consumption_kWh) * 100) / 100;
+  }
+  const days = Object.keys(daily).sort();
+
+  if (statusChart) statusChart.destroy();
+  statusChart = new Chart(document.getElementById('dailyChart'), {
+    type: 'bar',
+    data: {
+      labels: days.map(d => d.slice(8)),
+      datasets: [{ label: 'Day kWh', data: days.map(d => daily[d]), backgroundColor: '#38bdf8', borderRadius: 3 }]
+    },
+    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } } }
+  });
+
+  const half = e.points.filter(p => p.consumption_kWh != null);
+  if (intervalChart) intervalChart.destroy();
+  intervalChart = new Chart(document.getElementById('intervalChart'), {
+    type: 'line',
+    data: {
+      labels: half.map(p => p.timestamp.slice(11, 16)),
+      datasets: [
+        { label: 'kWh / interval', data: half.map(p => p.consumption_kWh), borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,.15)', tension: .3, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y' },
+        { label: 'voltage (V)', data: half.map(p => p.voltR), borderColor: '#fb7185', tension: .3, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y1' }
+      ]
+    },
+    options: {
+      plugins: { legend: { labels: { color: '#94a3b8', boxWidth: 10 } } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 8, color: '#64748b' }, grid: { color: '#1e293b' } },
+        y: { beginAtZero: true, grid: { color: '#1e293b' }, ticks: { color: '#64748b' } },
+        y1: { position: 'right', suggestedMin: 180, suggestedMax: 280, grid: { display: false }, ticks: { color: '#64748b' } }
+      }
+    }
+  });
+}
+
+function renderNetwork(body) {
+  const d = currentDetail;
+  body.innerHTML = `
+    <div class="crumbs">Chain from the portal (majority-resolved). Disagreements between meters are flagged on the tree endpoint — try:
+      <code>GET /v1/network/tree</code></div>
+    <div class="crumbs">${d.hierarchy.map(h => `<b>${h.code}</b> ${h.name}`).join(' <span style="color:var(--gray)">›</span> ')}</div>
+    <div class="chart-wrap"><h3>Load on this DT across the network</h3><canvas id="dtChart" height="170"></canvas></div>`;
+  renderDtChart(body);
+}
+
+async function renderDtChart(body) {
+  try {
+    const t = await api('/network/transformers');
+    const thisDt = currentDetail.dt_code;
+    const rows = t.data;
+    body.querySelector('#dtChart').parentElement.insertAdjacentHTML('afterend',
+      `<div class="chart-wrap"><h3>All 40 DTs: meters attached (bar) vs capacity <span style="color:var(--dim)">${rows.find(x => x.code === thisDt)?.capacity_kva ?? '?'} kVA for ${thisDt}</span></h3><canvas id="dtAll" height="150"></canvas></div>`);
+    new Chart(body.querySelector('#dtAll') || document.getElementById('dtAll'), {
+      type: 'bar',
+      data: {
+        labels: rows.map(r => r.code),
+        datasets: [{ label: 'meters', data: rows.map(r => r.meter_count), backgroundColor: rows.map(r => r.code === thisDt ? '#fbbf24' : '#38bdf8'), borderRadius: 3 }]
+      },
+      options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { maxTicksLimit: 14, color: '#64748b', fontSize: 8 }, grid: { display: false } }, y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b' } } } }
+    });
+  } catch { /* chart optional */ }
+}
+
+/* ------------------------------------------------ boot */
+(async function boot() {
+  const blog = () => document.getElementById('bootlog');
+  try {
+    await ensureToken();
+    blog().textContent += 'boot: token ok\n';
+    // pull all meters (paginated)
+    let offset = 0;
+    for (;;) {
+      const page = await api(`/meters?limit=100&offset=${offset}`);
+      meters.push(...page.data);
+      if (meters.length >= page.pagination.total || page.data.length === 0) break;
+      offset += page.data.length;
+    }
+    blog().textContent += 'boot: meters=' + meters.length + '\n';
+    fillFilters();
+    renderList();
+  } catch (err) {
+    blog().textContent += 'boot failed: ' + err.message + '\n';
+  }
+})();
+</script>
+</body>
+</html>

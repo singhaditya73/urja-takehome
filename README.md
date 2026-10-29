@@ -152,6 +152,8 @@ src/
 scripts/
   generate-openapi.ts writes openapi.json from the live app (npm run openapi)
   backfill-energy.ts  optional: warm energy cache for all 403 meters
+web/
+  index.html          the web client, served by the API at /app/
 test/                 vitest: sign, energy normalization, portal client, ingest, API e2e
 ```
 
@@ -207,11 +209,30 @@ and hit `/health` — the index refresh attempts a portal round trip on boot.
 8. **Fastify + undici MockAgent for tests.** Straightforward DI: the app builder
    takes injected services, so the portal can be a fully-mocked in-process fake.
 
+## The web client (optional extension, done)
+
+`served at http://127.0.0.1:8000/app/` — a single-file, zero-build page served by
+the API itself (same origin, no CORS). It turns the API into a product:
+
+- **Map view** of all 403 meters (Leaflet + OSM tiles, color-coded by install
+  status) — the coordinates come straight from `meter.latitude/longitude`.
+- **Filters**: status, phase, build, DT, and meter-id/serial search — list and
+  markers update together.
+- **Slide-over meter panel** with three tabs:
+  - *Meter* — nameplate fields, the resolved network path
+    (zone › circle › … › DT), and a "meters within 500 m" nearby call.
+  - *Consumption* — daily kWh bars + half-hourly consumption/voltage dual-axis
+    charts (Chart.js) from `/v1/meters/{id}/energy`, with `data_quality` surfaced
+    as warnings (malformed rows, duplicates, regressed registers, irregular gaps).
+  - *Network* — the DT master list with meter counts, the selected DT highlighted.
+- **Auth**: if a `/v1` call returns 401 and no token is stored, a dialog asks for
+  the bearer token (persisted in localStorage). You can also pass it via URL:
+  `/app/?token=dev-token-change-me`.
+
+Verified end-to-end in headless Chrome: full boot with all 403 meters rendered.
+
 ## What we intentionally left out, and why
 
-- **A web client** (the optional extension). It would be nice, but the core
-  API + docs + tests were higher value for review. Mock-ups live in
-  REFLECTION.md §"one more day".
 - **Public OAuth2/OIDC flows**, rate-limit headers on our own API, request
   auditing log: worth doing in production, both out of scope for a strong PoC.
 - **A full test of every hierarchy corner** (e.g. three-level inconsistencies in
